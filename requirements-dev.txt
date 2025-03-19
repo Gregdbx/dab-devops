@@ -1,0 +1,7 @@
+## requirements-dev.txt: dependencies for local development.
+##
+## For defining dependencies used by jobs in Databricks Workflows, see
+## https://docs.databricks.com/dev-tools/bundles/library-dependencies.html
+
+## Random lib
+nltk

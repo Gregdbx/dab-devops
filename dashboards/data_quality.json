@@ -1,0 +1,9 @@
+{
+    "name": "${var.env}_job_dashboard",
+    "widgets": [
+      {
+        "type": "sql",
+        "query": "SELECT * FROM users.gregoire.portier.${var.env}_gold_products LIMIT 10"
+      }
+    ]
+  }

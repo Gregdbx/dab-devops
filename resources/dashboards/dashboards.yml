@@ -1,0 +1,7 @@
+resources:
+  dashboards:
+    job_results:
+      display_name: ${var.dashboard_name}
+      file_path: ../../dashboards/data_quality.json
+      warehouse_id: ""
+

@@ -1,0 +1,9 @@
+resources:
+  clusters:
+    medium_cluster:
+      cluster_name: ${var.env}_medium_cluster
+      node_type_id: Standard_DS5_v2
+      num_workers: 2
+      spark_version: 14.3.x-scala2.12
+      autotermination_minutes: 120
+      policy_id: ${var.policy_id}

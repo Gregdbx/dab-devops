@@ -1,0 +1,89 @@
+trigger:
+  branches:
+    include:
+      - dev
+      - staging
+      - master
+
+pr:
+  branches:
+    include:
+      - dev
+      - staging
+      - master
+
+variables:
+  - group: databricks-variables  # Azure Group contains DATABRICKS_TOKEN
+  - name: DATABRICKS_HOST
+    value: "your_workspace"
+  - name: targetEnvironment
+    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/dev') }}:
+      value: dev
+    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/staging') }}:
+      value: staging
+    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}:
+      value: prod
+    ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      value: ${{ variables['System.PullRequest.TargetBranch'] }}  # Use target branch for PRs
+
+
+pool:
+  name: agent-deploy
+
+stages:
+- stage: TestPythonCode
+  displayName: 'Run Unit Tests for ${{ variables.targetEnvironment }}'
+  jobs:
+  - job: RunTests
+    displayName: 'Run Unit Tests for ${{ variables.targetEnvironment }}'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+
+    # - script: |
+    #     python3 -m pip install --upgrade pip
+    #     python3 -m pip install -r requirements.txt
+    #   displayName: 'Install Python Dependencies'
+
+    - script: |
+        python3 -m pytest --junitxml=test-results.xml -v
+      displayName: 'Run Pytest and Generate Report'
+
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFiles: 'test-results.xml'
+        testRunTitle: 'Python Unit Tests for ${{ variables.targetEnvironment }}'
+        failTaskOnFailedTests: true
+      condition: succeededOrFailed()
+
+
+- stage: DeployDatabricksBundle
+  displayName: 'Deploy Databricks Asset Bundle to ${{ variables.targetEnvironment }}'
+  dependsOn: TestPythonCode
+  condition: and(succeeded('TestPythonCode'), ne(variables['Build.Reason'], 'PullRequest'))  # Skip for PRs
+  jobs:
+  - job: DeployBundle
+    displayName: 'Deploy to ${{ variables.targetEnvironment }}'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+
+    # - script: |
+    #     python3 -m pip install databricks-cli databricks-sdk
+    #   displayName: 'Install Databricks CLI and SDK'
+
+    - script: |
+        databricks bundle validate
+      displayName: 'Validate Databricks Bundle'
+      env:
+        DATABRICKS_HOST: $(DATABRICKS_HOST)
+        DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+    - script: |
+        databricks bundle deploy --target ${{ variables.targetEnvironment }}
+      displayName: 'Deploy Databricks Bundle'
+      env:
+        DATABRICKS_HOST: $(DATABRICKS_HOST)
+        DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+

@@ -1,0 +1,6 @@
+resources:
+  volumes:
+    data_volume:
+      name: ${var.volume_name}
+      catalog_name: users
+      schema_name: user_name

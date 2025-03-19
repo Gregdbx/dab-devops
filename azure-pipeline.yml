@@ -1,0 +1,80 @@
+trigger:
+- none
+
+parameters:
+- name: environment
+  displayName: 'Environment to deploy to'
+  type: string
+  default: 'dev'
+  values:
+  - dev
+  - staging
+  - prod
+
+variables:
+  - group: databricks-variables  # Azure Group contains DATABRICKS_TOKEN
+  - name: DATABRICKS_HOST
+    value: your_workspace
+
+pool:
+  name: agent-deploy
+
+stages:
+- stage: TestPythonCode
+  displayName: 'Run Python Unit Tests'
+  jobs:
+  - job: RunTests
+    displayName: 'Run Unit Tests for ${{ parameters.environment }}'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+
+    # Install dependencies (uncomment if not pre-installed)
+    # - script: |
+    #     python3 -m pip install --upgrade pip
+    #     python3 -m pip install -r requirements.txt
+    #   displayName: 'Install Python Dependencies'
+
+    # Run tests and generate JUnit XML report
+    - script: |
+        python3 -m pytest --junitxml=test-results.xml -v
+      displayName: 'Run Pytest and Generate Report'
+
+    # Publish test results to Azure DevOps UI
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFiles: 'test-results.xml'
+        testRunTitle: 'Python Unit Tests for ${{ parameters.environment }}'
+        failTaskOnFailedTests: true
+      condition: succeededOrFailed()  # Publish even if tests fail
+
+- stage: DeployDatabricksBundle
+  displayName: 'Deploy Databricks Asset Bundle'
+  dependsOn: TestPythonCode
+  condition: succeeded('TestPythonCode')
+  jobs:
+  - job: DeployBundle
+    displayName: 'Deploy to ${{ parameters.environment }}'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+
+    # Install Databricks CLI (uncomment if not pre-installed)
+    # - script: |
+    #     python3 -m pip install databricks-cli databricks-sdk
+    #   displayName: 'Install Databricks Python SDK and CLI'
+
+    - script: |
+        databricks bundle validate
+      displayName: 'Validate Databricks Bundle'
+      env:
+        DATABRICKS_HOST: $(DATABRICKS_HOST)
+        DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+    - script: |
+        databricks bundle deploy --target ${{ parameters.environment }}
+      displayName: 'Deploy Databricks Bundle'
+      env:
+        DATABRICKS_HOST: $(DATABRICKS_HOST)
+        DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)

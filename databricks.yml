@@ -1,0 +1,79 @@
+# This is a Databricks asset bundle definition for demo_bundle.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: demo_bundle
+
+# Define variables with nesting for parameterization
+variables:
+  env:
+    default: sandbox
+    description: "Environment prefix (e.g., sandbox, dev, staging, prod)"
+  catalog_name:
+    default: default
+    description: "Base catalog name for data storage"
+  job_name:
+    default: ${var.env}_bundle_demo_job
+    description: "Base name for the data processing job"
+  volume_name:
+    default: ${var.env}_data_volume
+    description: "Base name for the Unity Catalog volume"
+  dashboard_name:
+    default: ${var.env}_dashboard
+    description: "Base name for the AI/BI dashboard"
+  workspace_root:
+    default: /Workspace/Users/gregoire.portier@databricks.com
+    description: "Root workspace path for bundle deployment"
+  policy_id:
+    default: ""
+
+# Include external resource files (clusters in this case)
+include:
+  # Include external resource files (clusters in this case)
+  # - resources/clusters/*.yml
+  # Include external resource files (clusters in this case)
+  - resources/dashboards/*.yml
+  # Include external resource files (clusters in this case)
+  - resources/volumes/*.yml
+  # Include external resource files (clusters in this case)
+  - resources/workflows/*.yml
+
+
+# Define targets with development/production modes
+targets:
+  sandbox:
+    mode: development  # For sandbox flexibility
+    default: true      # Your default target
+    workspace:
+      host: your_workspace
+      root_path: ${var.workspace_root}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      env: sandbox
+      catalog_name: sandbox_catalog
+
+
+  dev:
+    mode: production  # Locked-down for dev deployment
+    workspace:
+      host: your_workspace
+      root_path: ${var.workspace_root}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      env: dev
+      catalog_name: dev
+
+  staging:
+    mode: production
+    workspace:
+      host: your_workspace
+      root_path: ${var.workspace_root}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      env: staging
+      catalog_name: staging
+
+  prod:
+    mode: production
+    workspace:
+      host: your_workspace
+      root_path: ${var.workspace_root}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      env: prod
+      catalog_name: prod
